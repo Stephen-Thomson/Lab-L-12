@@ -4,6 +4,7 @@ import { Ninja } from 'ninja-base'  // Import Ninja wallet library
 import { PrivateKey } from '@bsv/sdk'
 import dotenv from 'dotenv'
 import crypto from 'crypto'
+import pushdrop from 'pushdrop'
 
 // Initialize dotenv to load variables from .env file
 dotenv.config()
@@ -64,19 +65,29 @@ app.post('/log-event', async (req: Request, res: Response<LogEventResponse>) => 
       .update(JSON.stringify({ ip, timestamp, endpoint, ...eventData }))
       .digest('hex');
 
-    // Use the hash and timestamp to create a PushDrop token
-    const pushDropToken = `Hash:${eventHash}|Timestamp:${timestamp}`;
+    // Prepare the data fields to be included in the PushDrop script
+    const eventDataFields = {
+      ip,
+      timestamp,
+      endpoint,
+      eventHash,
+    };
+
+    // Use PushDrop to create a valid Bitcoin locking script
+    const pushDropScript = await pushdrop.create({
+      fields: [JSON.stringify(eventDataFields)],  // Encode the fields as JSON
+      protocolID: 'event-logging',  // Custom protocol ID for this use case
+    });
 
     // Create a transaction on the blockchain with the event data
     const tx = await ninjaWallet.createTransactionWithOutputs({
       outputs: [
         {
-          script: pushDropToken,
-          satoshis: 546, // Minimum dust limit
+          script: pushDropScript,  // Use the valid PushDrop script
+          satoshis: 546,  // Minimum dust limit
         },
       ],
     });
-    
 
     console.log('Transaction created:', tx)
 

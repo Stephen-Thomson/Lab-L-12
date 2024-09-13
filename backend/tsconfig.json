@@ -4,9 +4,9 @@
       "dom",
       "ESNext"
     ],
-    "module": "NodeNext",
+    "module": "esnext",
     "target": "esnext",
-    "moduleResolution": "NodeNext",
+    "moduleResolution": "node",
     "moduleDetection": "force",
     "rootDir": "./",
     "baseUrl": "./",
@@ -29,8 +29,11 @@
     "src",
     "src/types.d.ts",
     "jest.config.js",
-    "tsconfig.json"
-, "jest.config.js", "tsconfig.json", "types/authrite-express.d.ts"  ],
+    "tsconfig.json", 
+    "jest.config.js", 
+    "tsconfig.json", 
+    "types/authrite-express.d.ts", 
+    "src/types" ],
   "exclude": [
     "dist",
     "*/**/__tests"
