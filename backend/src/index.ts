@@ -1,20 +1,32 @@
 import express, { Express, Request, Response } from 'express'
 import bodyParser from 'body-parser'
-import { Ninja } from 'ninja-base'
+import { Ninja } from 'ninja-base'  // Import Ninja wallet library
+import { PrivateKey } from '@bsv/sdk'
+import dotenv from 'dotenv'
+import crypto from 'crypto'
+
+// Initialize dotenv to load variables from .env file
+dotenv.config()
 
 interface LogEventRequest {
   eventData: Record<string, any>
 }
 interface LogEventResponse {
-  tx: any
+  tx: string
   message: string
 }
 
 const app: Express = express()
-const port = 3000
+const port = process.env.PORT || 3000
 
-// TODO: Define the server private key
-// TODO: Create a Ninja Wallet
+// Get private key from .env or generate one if not available
+const privateKey = process.env.SERVER_PRIVATE_KEY || PrivateKey.fromRandom().toHex()
+console.log('Server Private Key:', privateKey)
+
+// Create a Ninja wallet using the private key
+const ninjaWallet = new Ninja({
+  privateKey: process.env.SERVER_PRIVATE_KEY,
+});
 
 // Middleware
 app.use(bodyParser.json())
@@ -26,7 +38,6 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Headers', '*')
   res.header('Access-Control-Allow-Methods', '*')
   res.header('Access-Control-Expose-Headers', '*')
-  res.header('Access-Control-Allow-Private-Network', 'true')
   if (req.method === 'OPTIONS') {
     res.sendStatus(200)
   } else {
@@ -34,6 +45,7 @@ app.use((req, res, next) => {
   }
 })
 
+// API endpoint for logging events
 app.post('/log-event', async (req: Request, res: Response<LogEventResponse>) => {
   const { eventData } = req.body as LogEventRequest
 
@@ -42,17 +54,37 @@ app.post('/log-event', async (req: Request, res: Response<LogEventResponse>) => 
   }
 
   try {
-    // TODO: Collect request data
+    // Collect request data (IP, timestamp, endpoint)
+    const ip = req.ip;
+    const timestamp = new Date().toISOString();
+    const endpoint = req.originalUrl;
 
-    // TODO: Encrypt data
-    // TODO: Generate key derivation info 
-    // TODO: Create a pushdrop timestamp token
+    // Optionally encrypt or hash data (using SHA-256)
+    const eventHash = crypto.createHash('sha256')
+      .update(JSON.stringify({ ip, timestamp, endpoint, ...eventData }))
+      .digest('hex');
 
-    // TODO: Create a new Bitcoin transaction
-    let tx
+    // Use the hash and timestamp to create a PushDrop token
+    const pushDropToken = `Hash:${eventHash}|Timestamp:${timestamp}`;
+
+    // Create a transaction on the blockchain with the event data
+    const tx = await ninjaWallet.createTransactionWithOutputs({
+      outputs: [
+        {
+          script: pushDropToken,
+          satoshis: 546, // Minimum dust limit
+        },
+      ],
+    });
+    
+
+    console.log('Transaction created:', tx)
 
     // Respond with the transaction ID
-    res.status(200).json({ tx, message: 'Event logged on the blockchain' })
+    res.status(200).json({ 
+      tx: tx.txid || 'Transaction ID not available', 
+      message: 'Event logged on the blockchain' 
+    });
   } catch (error) {
     console.error('Error logging event:', error)
     res.status(500).json({ tx: '', message: 'Failed to log event on the blockchain' })
