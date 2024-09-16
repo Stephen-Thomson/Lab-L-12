@@ -1,10 +1,11 @@
 import express, { Express, Request, Response } from 'express'
 import bodyParser from 'body-parser'
-import { Ninja } from 'ninja-base'  // Import Ninja wallet library
-import { PrivateKey } from '@bsv/sdk'
+import { Ninja } from 'ninja-base'
 import dotenv from 'dotenv'
 import crypto from 'crypto'
 import pushdrop from 'pushdrop'
+
+
 
 // Initialize dotenv to load variables from .env file
 dotenv.config()
@@ -20,13 +21,14 @@ interface LogEventResponse {
 const app: Express = express()
 const port = process.env.PORT || 3000
 
-// Get private key from .env or generate one if not available
-const privateKey = process.env.SERVER_PRIVATE_KEY || PrivateKey.fromRandom().toHex()
+// Get private key from .env file
+const privateKey = process.env.SERVER_PRIVATE_KEY
 console.log('Server Private Key:', privateKey)
 
 // Create a Ninja wallet using the private key
 const ninjaWallet = new Ninja({
   privateKey: process.env.SERVER_PRIVATE_KEY,
+  config: { dojoURL: 'https://staging-dojo.babbage.systems' }
 });
 
 // Middleware
@@ -76,15 +78,15 @@ app.post('/log-event', async (req: Request, res: Response<LogEventResponse>) => 
     // Use PushDrop to create a valid Bitcoin locking script
     const pushDropScript = await pushdrop.create({
       fields: [JSON.stringify(eventDataFields)],  // Encode the fields as JSON
-      protocolID: 'event-logging',  // Custom protocol ID for this use case
+      protocolID: 'Event Logging',  // Custom protocol ID for this use case
     });
 
     // Create a transaction on the blockchain with the event data
     const tx = await ninjaWallet.createTransactionWithOutputs({
       outputs: [
         {
-          script: pushDropScript,  // Use the valid PushDrop script
-          satoshis: 546,  // Minimum dust limit
+          script: pushDropScript,
+          satoshis: 100,
         },
       ],
     });
